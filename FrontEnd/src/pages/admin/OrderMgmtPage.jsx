@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Table, Tag, Select, Button, Modal, Descriptions, message } from 'antd'
-import { EyeOutlined } from '@ant-design/icons'
+import { Table, Tag, Select, Button, Input, Modal, Descriptions, message } from 'antd'
+import { EyeOutlined, SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import * as adminApi from '../../services/adminService'
 import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../../utils/constants'
 
@@ -12,19 +12,24 @@ export default function OrderMgmtPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [searchVal, setSearchVal] = useState('')
   const [detail, setDetail] = useState(null)
 
-  const fetch = async (p = 1) => {
+  const fetchOrders = async (p = 1) => {
     setLoading(true)
     const params = { page: p, limit: 15 }
     if (filter) params.status = filter
+    if (keyword) params.keyword = keyword
     adminApi.getOrders(params).then((r) => { setOrders(r.orders); setTotal(r.total) }).finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetch(page) }, [page, filter])
+  useEffect(() => { fetchOrders(page) }, [page, filter, keyword])
+
+  const handleSearch = () => { setKeyword(searchVal); setPage(1) }
 
   const handleStatusChange = async (id, status) => {
-    try { await adminApi.updateOrderStatus(id, { status }); message.success('Cập nhật thành công'); fetch(page) } catch (e) { message.error(e.message) }
+    try { await adminApi.updateOrderStatus(id, { status }); message.success('Cập nhật thành công'); fetchOrders(page) } catch (e) { message.error(e.message) }
   }
 
   const columns = [
@@ -45,7 +50,7 @@ export default function OrderMgmtPage() {
           }} />
           {NEXT_STATUS[r.orderStatus] && (
             <Button size="small" type="primary" onClick={() => handleStatusChange(r._id, NEXT_STATUS[r.orderStatus])}>
-              → {ORDER_STATUS[NEXT_STATUS[r.orderStatus]]?.label}
+              {ORDER_STATUS[NEXT_STATUS[r.orderStatus]]?.label}
             </Button>
           )}
           {['pending', 'processing'].includes(r.orderStatus) && (
@@ -58,10 +63,23 @@ export default function OrderMgmtPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700 }}>Quản lý đơn hàng</h1>
-        <Select placeholder="Lọc trạng thái" allowClear style={{ width: 180 }} onChange={(v) => { setFilter(v || ''); setPage(1) }}
-          options={Object.entries(ORDER_STATUS).map(([k, v]) => ({ label: v.label, value: k }))} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input.Search
+            placeholder="Tìm theo tên, SĐT khách..."
+            value={searchVal}
+            onChange={(e) => setSearchVal(e.target.value)}
+            onSearch={handleSearch}
+            style={{ width: 260 }}
+            enterButton={<SearchOutlined />}
+            allowClear
+            onClear={() => { setSearchVal(''); setKeyword(''); setPage(1) }}
+          />
+          <Select placeholder="Trạng thái" allowClear style={{ width: 160 }} onChange={(v) => { setFilter(v || ''); setPage(1) }}
+            options={Object.entries(ORDER_STATUS).map(([k, v]) => ({ label: v.label, value: k }))} />
+          <Button icon={<DownloadOutlined />} onClick={() => adminApi.exportCsv('orders')}>Export</Button>
+        </div>
       </div>
       <Table columns={columns} dataSource={orders} rowKey="_id" loading={loading} pagination={{ current: page, total, pageSize: 15, onChange: setPage }} size="small" scroll={{ x: 1000 }} />
 

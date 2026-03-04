@@ -3,6 +3,7 @@ const {
   register,
   verifyEmail,
   login,
+  googleLogin,
   getMe,
   updateProfile,
   updateAvatar,
@@ -24,6 +25,7 @@ const {
 router.post('/register', registerValidator, validate, register)
 router.get('/verify-email/:token', verifyEmail)
 router.post('/login', loginValidator, validate, login)
+router.post('/google-login', googleLogin)
 router.post('/forgot-password', forgotPasswordValidator, validate, forgotPassword)
 router.put('/reset-password/:token', resetPasswordValidator, validate, resetPassword)
 

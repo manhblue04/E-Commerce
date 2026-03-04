@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import useAuthStore from './store/authStore'
 import useWishlistStore from './store/wishlistStore'
+import useThemeStore from './store/themeStore'
 import UserLayout from './components/layout/UserLayout'
 import AdminLayout from './components/layout/AdminLayout'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -21,6 +22,8 @@ const AccountPage = lazy(() => import('./pages/user/AccountPage'))
 const LoginPage = lazy(() => import('./pages/user/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/user/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/user/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/user/ResetPasswordPage'))
+const VerifyEmailPage = lazy(() => import('./pages/user/VerifyEmailPage'))
 const NotFoundPage = lazy(() => import('./pages/user/NotFoundPage'))
 
 const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'))
@@ -39,6 +42,9 @@ function App() {
   const fetchWishlist = useWishlistStore((s) => s.fetchWishlist)
 
   const fetchSavedOutfitCount = useWishlistStore((s) => s.fetchSavedOutfitCount)
+  const initTheme = useThemeStore((s) => s.init)
+
+  useEffect(() => { initTheme() }, [])
 
   useEffect(() => {
     if (token) {
@@ -63,6 +69,8 @@ function App() {
             <Route path="/dang-nhap" element={<LoginPage />} />
             <Route path="/dang-ky" element={<RegisterPage />} />
             <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
+            <Route path="/dat-lai-mat-khau/:token" element={<ResetPasswordPage />} />
+            <Route path="/xac-thuc-email/:token" element={<VerifyEmailPage />} />
             <Route path="/thanh-toan" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/don-hang" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
             <Route path="/don-hang/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />

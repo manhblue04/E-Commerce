@@ -1,17 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { HiOutlineSearch, HiOutlineHeart, HiOutlineShoppingBag, HiOutlineUser, HiOutlineMenu, HiX } from 'react-icons/hi'
+import { HiOutlineSearch, HiOutlineHeart, HiOutlineShoppingBag, HiOutlineUser, HiOutlineMenu, HiOutlineBell, HiX } from 'react-icons/hi'
 import useAuthStore from '../../store/authStore'
 import useCartStore from '../../store/cartStore'
 import useWishlistStore from '../../store/wishlistStore'
 import useDebounce from '../../hooks/useDebounce'
 import { searchSuggestions } from '../../services/productService'
+import { HiOutlineSun, HiOutlineMoon } from 'react-icons/hi'
 import { formatPrice } from '../../utils/formatPrice'
+import useThemeStore from '../../store/themeStore'
+import api from '../../services/api'
 
 export default function Header() {
   const { user, logout } = useAuthStore()
   const items = useCartStore((s) => s.items)
   const wishlistTotalCount = useWishlistStore((s) => s.items.length + s.savedOutfitCount)
+  const { dark, toggle: toggleTheme } = useThemeStore()
   const navigate = useNavigate()
 
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -19,9 +23,13 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [suggestions, setSuggestions] = useState([])
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const debouncedKeyword = useDebounce(keyword, 400)
   const searchRef = useRef(null)
   const userMenuRef = useRef(null)
+  const notifRef = useRef(null)
 
   const cartCount = items.reduce((s, i) => s + i.quantity, 0)
   const wishlistCount = wishlistTotalCount
@@ -43,10 +51,32 @@ export default function Header() {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setUserMenu(false)
       }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const fetchNotifs = () => {
+      api.get('/notifications').then((res) => {
+        setNotifications(res.notifications)
+        setUnreadCount(res.unreadCount)
+      }).catch(() => {})
+    }
+    fetchNotifs()
+    const interval = setInterval(fetchNotifs, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  const markAllRead = async () => {
+    await api.put('/notifications/all/read')
+    setUnreadCount(0)
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+  }
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -59,7 +89,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -110,6 +140,47 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-3 lg:gap-4 ml-4">
+            <button onClick={toggleTheme} className="p-2 text-gray-700 dark:text-gray-300 hover:text-amber-600 transition" title={dark ? 'Chế độ sáng' : 'Chế độ tối'}>
+              {dark ? <HiOutlineSun className="w-5 h-5" /> : <HiOutlineMoon className="w-5 h-5" />}
+            </button>
+            {user && (
+              <div ref={notifRef} className="relative">
+                <button onClick={() => setNotifOpen(!notifOpen)} className="relative p-2 text-gray-700 hover:text-amber-600 transition">
+                  <HiOutlineBell className="w-6 h-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 flex items-center justify-center bg-red-500 text-white text-xs rounded-full">{unreadCount}</span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-100 z-50 max-h-96 overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <span className="text-sm font-bold text-gray-900">Thông báo</span>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-xs text-amber-600 hover:text-amber-700">Đánh dấu tất cả đã đọc</button>
+                      )}
+                    </div>
+                    <div className="overflow-y-auto flex-1">
+                      {notifications.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-8">Chưa có thông báo</p>
+                      ) : (
+                        notifications.map((n) => (
+                          <Link
+                            key={n._id}
+                            to={n.link || '#'}
+                            onClick={() => setNotifOpen(false)}
+                            className={`block px-4 py-3 hover:bg-gray-50 transition border-b border-gray-50 ${!n.isRead ? 'bg-amber-50/50' : ''}`}
+                          >
+                            <p className="text-sm font-medium text-gray-800">{n.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
+                            <p className="text-xs text-gray-300 mt-1">{new Date(n.createdAt).toLocaleString('vi-VN')}</p>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <Link to="/yeu-thich" className="relative p-2 text-gray-700 hover:text-amber-600 transition">
               <HiOutlineHeart className="w-6 h-6" />
               {wishlistCount > 0 && (

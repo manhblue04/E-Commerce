@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Table, Button, Space, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Tag, message } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, AimOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Modal, Form, Input, InputNumber, Switch, Select, Upload, Popconfirm, Tag, message } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, AimOutlined, UploadOutlined } from '@ant-design/icons'
 import * as adminApi from '../../services/adminService'
 
 export default function OutfitMgmtPage() {
@@ -15,6 +15,7 @@ export default function OutfitMgmtPage() {
   const [pickingIdx, setPickingIdx] = useState(null)
   const imgRef = useRef(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [outfitImageList, setOutfitImageList] = useState([])
 
   const fetchData = async () => {
     setLoading(true)
@@ -32,6 +33,7 @@ export default function OutfitMgmtPage() {
     form.resetFields()
     setItems([])
     setPreviewUrl('')
+    setOutfitImageList([])
     setModalOpen(true)
   }
 
@@ -45,6 +47,7 @@ export default function OutfitMgmtPage() {
       posY: i.posY,
     })))
     setPreviewUrl(record.image?.url || '')
+    setOutfitImageList([])
     setModalOpen(true)
   }
 
@@ -60,7 +63,16 @@ export default function OutfitMgmtPage() {
       setSubmitting(true)
 
       const payload = { ...values, items }
-      if (previewUrl && !editing) {
+
+      const uploadFile = outfitImageList.find((f) => f.originFileObj)
+      if (uploadFile) {
+        const b64 = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.readAsDataURL(uploadFile.originFileObj)
+        })
+        payload.image = b64
+      } else if (previewUrl && !editing) {
         payload.image = previewUrl
       }
 
@@ -242,13 +254,32 @@ export default function OutfitMgmtPage() {
               </div>
             )}
 
-            {!editing && (
-              <Input
-                placeholder="Nhập URL ảnh outfit (Unsplash hoặc link bất kỳ)"
-                value={previewUrl}
-                onChange={(e) => setPreviewUrl(e.target.value)}
-              />
-            )}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <Upload
+                listType="picture-card"
+                fileList={outfitImageList}
+                onChange={({ fileList }) => {
+                  setOutfitImageList(fileList.slice(-1))
+                  if (fileList.length > 0 && fileList[0].originFileObj) {
+                    const url = URL.createObjectURL(fileList[0].originFileObj)
+                    setPreviewUrl(url)
+                  }
+                }}
+                beforeUpload={() => false}
+                accept="image/*"
+                maxCount={1}
+              >
+                {outfitImageList.length === 0 && <div><UploadOutlined /><div style={{ marginTop: 8 }}>Tải ảnh</div></div>}
+              </Upload>
+              {!editing && (
+                <Input
+                  placeholder="Hoặc nhập URL ảnh outfit"
+                  value={outfitImageList.length > 0 ? '' : previewUrl}
+                  onChange={(e) => { setPreviewUrl(e.target.value); setOutfitImageList([]) }}
+                  style={{ marginTop: 8 }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Items */}

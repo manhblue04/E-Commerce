@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
-  const { login, loading } = useAuthStore()
+  const { login, googleLogin, loading } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/'
@@ -16,6 +16,26 @@ export default function LoginPage() {
       navigate(user.role === 'admin' ? '/admin' : from, { replace: true })
     }
   }
+
+  const handleGoogleResponse = useCallback(async (response) => {
+    const user = await googleLogin(response.credential)
+    if (user) {
+      navigate(user.role === 'admin' ? '/admin' : from, { replace: true })
+    }
+  }, [googleLogin, navigate, from])
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId || typeof window.google === 'undefined') return
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleResponse,
+    })
+    window.google.accounts.id.renderButton(
+      document.getElementById('google-login-btn'),
+      { theme: 'outline', size: 'large', width: '100%', text: 'signin_with' }
+    )
+  }, [handleGoogleResponse])
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-gray-50">
@@ -61,6 +81,13 @@ export default function LoginPage() {
             {loading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+          <div className="relative flex justify-center"><span className="bg-white px-4 text-xs text-gray-400">hoặc</span></div>
+        </div>
+
+        <div id="google-login-btn" className="flex justify-center" />
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Chưa có tài khoản?{' '}

@@ -4,7 +4,7 @@ import { HiOutlineHeart, HiHeart, HiStar, HiMinus, HiPlus, HiOutlineShoppingBag 
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import ProductCard from '../../components/common/ProductCard'
 import { getProduct, getProducts } from '../../services/productService'
-import { getProductReviews } from '../../services/reviewService'
+import { getProductReviews, createReview } from '../../services/reviewService'
 import { formatPrice } from '../../utils/formatPrice'
 import useCartStore from '../../store/cartStore'
 import useWishlistStore from '../../store/wishlistStore'
@@ -21,6 +21,12 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [selectedSize, setSelectedSize] = useState('')
   const [selectedColor, setSelectedColor] = useState('')
+  const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 })
+  const [zooming, setZooming] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewHover, setReviewHover] = useState(0)
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   const addItem = useCartStore((s) => s.addItem)
   const { isInWishlist, toggleWishlist } = useWishlistStore()
@@ -69,6 +75,29 @@ export default function ProductDetailPage() {
     window.location.href = '/gio-hang'
   }
 
+  const handleZoom = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setZoomPos({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
+  }
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault()
+    if (!user) return toast.error('Vui lòng đăng nhập để đánh giá')
+    setSubmittingReview(true)
+    try {
+      await createReview({ product: product._id, rating: reviewRating, comment: reviewComment })
+      toast.success('Đánh giá thành công!')
+      setReviewComment('')
+      setReviewRating(5)
+      const revRes = await getProductReviews(product._id, { limit: 10 })
+      setReviews(revRes.reviews)
+    } catch (err) {
+      toast.error(err.message || 'Không thể gửi đánh giá')
+    } finally {
+      setSubmittingReview(false)
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
@@ -81,13 +110,19 @@ export default function ProductDetailPage() {
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Image Gallery */}
+        {/* Image Gallery with Zoom */}
         <div>
-          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-4">
+          <div
+            className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-4 relative cursor-crosshair"
+            onMouseEnter={() => setZooming(true)}
+            onMouseLeave={() => setZooming(false)}
+            onMouseMove={handleZoom}
+          >
             <img
               src={product.images?.[selectedImage]?.url}
               alt={product.name}
               className="w-full h-full object-cover"
+              style={zooming ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`, transform: 'scale(2)', transition: 'transform 0.1s ease' } : { transition: 'transform 0.3s ease' }}
             />
           </div>
           {product.images?.length > 1 && (
@@ -268,6 +303,41 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <p className="text-gray-500 text-sm">Chưa có đánh giá nào</p>
+        )}
+
+        {/* Review Form */}
+        {user && (
+          <form onSubmit={handleSubmitReview} className="mt-8 p-6 bg-gray-50 rounded-xl">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Viết đánh giá</h3>
+            <div className="flex items-center gap-1 mb-3">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setReviewRating(star)}
+                  onMouseEnter={() => setReviewHover(star)}
+                  onMouseLeave={() => setReviewHover(0)}
+                >
+                  <HiStar className={`w-7 h-7 transition ${star <= (reviewHover || reviewRating) ? 'text-amber-400' : 'text-gray-200'}`} />
+                </button>
+              ))}
+              <span className="text-sm text-gray-500 ml-2">{reviewRating}/5</span>
+            </div>
+            <textarea
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 transition resize-none"
+            />
+            <button
+              type="submit"
+              disabled={submittingReview}
+              className="mt-3 px-6 py-2.5 bg-gray-900 text-white text-sm rounded-lg font-medium hover:bg-gray-800 transition disabled:opacity-50"
+            >
+              {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
+            </button>
+          </form>
         )}
       </section>
 

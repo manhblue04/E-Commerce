@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Rate, Popconfirm, message } from 'antd'
+import { Table, Button, Rate, Select, Popconfirm, message } from 'antd'
 import { DeleteOutlined } from '@ant-design/icons'
 import * as adminApi from '../../services/adminService'
 
@@ -8,11 +8,18 @@ export default function ReviewMgmtPage() {
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [ratingFilter, setRatingFilter] = useState('')
 
-  const fetch = (p = 1) => { setLoading(true); adminApi.getReviews({ page: p, limit: 20 }).then((r) => { setReviews(r.reviews); setTotal(r.total) }).finally(() => setLoading(false)) }
-  useEffect(() => { fetch(page) }, [page])
+  const fetchReviews = (p = 1) => {
+    setLoading(true)
+    const params = { page: p, limit: 20 }
+    if (ratingFilter) params.rating = ratingFilter
+    adminApi.getReviews(params).then((r) => { setReviews(r.reviews); setTotal(r.total) }).finally(() => setLoading(false))
+  }
 
-  const handleDelete = async (id) => { await adminApi.deleteReview(id); message.success('Đã xóa'); fetch(page) }
+  useEffect(() => { fetchReviews(page) }, [page, ratingFilter])
+
+  const handleDelete = async (id) => { await adminApi.deleteReview(id); message.success('Đã xóa'); fetchReviews(page) }
 
   const columns = [
     { title: 'Người dùng', dataIndex: 'user', render: (u) => u?.name || u?.email || '-' },
@@ -27,7 +34,11 @@ export default function ReviewMgmtPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>Quản lý đánh giá</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Quản lý đánh giá</h1>
+        <Select placeholder="Lọc theo sao" allowClear style={{ width: 160 }} onChange={(v) => { setRatingFilter(v || ''); setPage(1) }}
+          options={[5, 4, 3, 2, 1].map((r) => ({ label: `${r} sao`, value: r }))} />
+      </div>
       <Table columns={columns} dataSource={reviews} rowKey="_id" loading={loading} pagination={{ current: page, total, pageSize: 20, onChange: setPage }} size="small" />
     </div>
   )

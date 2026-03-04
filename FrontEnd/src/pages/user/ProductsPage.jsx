@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { HiOutlineFilter, HiX } from 'react-icons/hi'
+import { HiOutlineFilter, HiX, HiStar } from 'react-icons/hi'
 import ProductCard from '../../components/common/ProductCard'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import EmptyState from '../../components/common/EmptyState'
@@ -25,6 +25,7 @@ export default function ProductsPage() {
   const gender = searchParams.get('gender') || ''
   const size = searchParams.get('size') || ''
   const color = searchParams.get('color') || ''
+  const rating = searchParams.get('rating') || ''
 
   useEffect(() => {
     getCategories().then((res) => setCategories(res.categories)).catch(() => {})
@@ -42,6 +43,7 @@ export default function ProductsPage() {
         if (gender) params.gender = gender
         if (size) params.size = size
         if (color) params.color = color
+        if (rating) params.rating = rating
 
         const res = await getProducts(params)
         setProducts(res.products)
@@ -52,7 +54,7 @@ export default function ProductsPage() {
       }
     }
     fetchProducts()
-  }, [keyword, category, sort, page, minPrice, maxPrice, gender, size, color])
+  }, [keyword, category, sort, page, minPrice, maxPrice, gender, size, color, rating])
 
   const updateParam = (key, value) => {
     const params = new URLSearchParams(searchParams)
@@ -202,7 +204,28 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {(category || minPrice || maxPrice || gender || size || color) && (
+          {/* Rating filter */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Đánh giá</h3>
+            <div className="space-y-2">
+              {[4, 3, 2, 1].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => updateParam('rating', rating === String(r) ? '' : String(r))}
+                  className={`flex items-center gap-1.5 text-sm ${rating === String(r) ? 'text-amber-600 font-medium' : 'text-gray-600 hover:text-amber-600'}`}
+                >
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <HiStar key={s} className={`w-3.5 h-3.5 ${s <= r ? 'text-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                  </div>
+                  <span>{r}+ sao</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {(category || minPrice || maxPrice || gender || size || color || rating) && (
             <button
               onClick={() => setSearchParams(keyword ? { keyword } : {})}
               className="text-sm text-red-500 hover:text-red-600"

@@ -1,4 +1,5 @@
 const crypto = require('crypto')
+const axios = require('axios')
 const User = require('../models/User')
 const generateToken = require('../utils/generateToken')
 const sendEmail = require('../utils/sendEmail')
@@ -263,6 +264,43 @@ exports.deleteAddress = async (req, res, next) => {
     await user.save()
 
     res.json({ success: true, message: 'Xóa địa chỉ thành công', addresses: user.addresses })
+  } catch (error) {
+    next(error)
+  }
+}
+
+exports.googleLogin = async (req, res, next) => {
+  try {
+    const { credential } = req.body
+    const googleRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`)
+    const { email, name, picture, email_verified } = googleRes.data
+
+    if (!email_verified) {
+      return res.status(400).json({ success: false, message: 'Email Google chưa được xác thực' })
+    }
+
+    let user = await User.findOne({ email })
+    if (!user) {
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email,
+        password: crypto.randomBytes(20).toString('hex'),
+        isVerified: true,
+        avatar: picture ? { url: picture, public_id: '' } : undefined,
+      })
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: 'Tài khoản đã bị khóa' })
+    }
+
+    const token = generateToken(user._id)
+    res.json({
+      success: true,
+      message: 'Đăng nhập thành công',
+      token,
+      user: { _id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+    })
   } catch (error) {
     next(error)
   }

@@ -10,6 +10,7 @@ exports.getProducts = async (req, res, next) => {
     if (req.query.size) baseFilter.sizes = req.query.size
     if (req.query.color) baseFilter.colors = { $regex: req.query.color, $options: 'i' }
     if (req.query.brand) baseFilter.brand = { $regex: req.query.brand, $options: 'i' }
+    if (req.query.rating) baseFilter.rating = { $gte: parseFloat(req.query.rating) }
 
     const apiFeatures = new ApiFeatures(
       Product.find(baseFilter).populate('category', 'name slug'),

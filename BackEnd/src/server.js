@@ -13,7 +13,7 @@ connectDB()
 
 app.use(helmet())
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true }))
 
 if (process.env.NODE_ENV === 'development') {
@@ -40,6 +40,7 @@ app.use('/api/settings', require('./routes/setting.routes'))
 app.use('/api/admin', require('./routes/admin.routes'))
 app.use('/api/payment', require('./routes/payment.routes'))
 app.use('/api/outfits', require('./routes/outfit.routes'))
+app.use('/api/notifications', require('./routes/notification.routes'))
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Server đang hoạt động' })

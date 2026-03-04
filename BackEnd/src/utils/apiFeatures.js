@@ -14,7 +14,7 @@ class ApiFeatures {
 
   filter() {
     const queryCopy = { ...this.queryStr }
-    const removeFields = ['keyword', 'page', 'limit', 'sort', 'gender', 'size', 'color', 'brand']
+    const removeFields = ['keyword', 'page', 'limit', 'sort', 'gender', 'size', 'color', 'brand', 'rating']
     removeFields.forEach((key) => delete queryCopy[key])
 
     let queryStr = JSON.stringify(queryCopy)

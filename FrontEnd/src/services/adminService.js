@@ -8,6 +8,7 @@ export const getProducts = (params) => api.get(`${a}/products`, { params })
 export const createProduct = (data) => api.post(`${a}/products`, data)
 export const updateProduct = (id, data) => api.put(`${a}/products/${id}`, data)
 export const deleteProduct = (id) => api.delete(`${a}/products/${id}`)
+export const bulkDeleteProducts = (ids) => api.post(`${a}/products/bulk-delete`, { ids })
 
 export const getCategories = () => api.get(`${a}/categories`)
 export const createCategory = (data) => api.post(`${a}/categories`, data)
@@ -21,6 +22,7 @@ export const updateOrderStatus = (id, data) => api.put(`${a}/orders/${id}/status
 export const getUsers = (params) => api.get(`${a}/users`, { params })
 export const getUserDetail = (id) => api.get(`${a}/users/${id}`)
 export const toggleBlockUser = (id) => api.put(`${a}/users/${id}/block`)
+export const bulkBlockUsers = (ids, isBlocked) => api.post(`${a}/users/bulk-block`, { ids, isBlocked })
 export const updateUserRole = (id, data) => api.put(`${a}/users/${id}/role`, data)
 
 export const getReviews = (params) => api.get(`${a}/reviews`, { params })
@@ -43,3 +45,17 @@ export const deleteOutfit = (id) => api.delete(`${a}/outfits/${id}`)
 
 export const getSettings = () => api.get(`${a}/settings`)
 export const updateSettings = (data) => api.put(`${a}/settings`, data)
+
+export const exportCsv = async (type) => {
+  const token = localStorage.getItem('token')
+  const res = await fetch(`${import.meta.env.VITE_API_URL}${a}/${type}/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${type}.csv`
+  link.click()
+  window.URL.revokeObjectURL(url)
+}

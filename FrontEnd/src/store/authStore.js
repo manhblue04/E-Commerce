@@ -38,6 +38,23 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  googleLogin: async (credential) => {
+    set({ loading: true })
+    try {
+      const res = await api.post('/auth/google-login', { credential })
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('user', JSON.stringify(res.user))
+      set({ user: res.user, token: res.token })
+      toast.success('Đăng nhập thành công')
+      return res.user
+    } catch (err) {
+      toast.error(err.message)
+      return null
+    } finally {
+      set({ loading: false })
+    }
+  },
+
   logout: () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')

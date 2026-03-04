@@ -8,6 +8,7 @@ const Banner = require('../models/Banner')
 const Setting = require('../models/Setting')
 const Coupon = require('../models/Coupon')
 const cloudinary = require('../config/cloudinary')
+const { createNotification } = require('./notificationController')
 
 // ── Dashboard ──
 exports.getDashboard = async (req, res, next) => {
@@ -150,6 +151,24 @@ exports.deleteProduct = async (req, res, next) => {
   }
 }
 
+exports.bulkDeleteProducts = async (req, res, next) => {
+  try {
+    const { ids } = req.body
+    if (!ids || ids.length === 0) return res.status(400).json({ success: false, message: 'Không có sản phẩm nào được chọn' })
+    await Product.updateMany({ _id: { $in: ids } }, { isDeleted: true })
+    res.json({ success: true, message: `Đã xóa ${ids.length} sản phẩm` })
+  } catch (error) { next(error) }
+}
+
+exports.bulkBlockUsers = async (req, res, next) => {
+  try {
+    const { ids, isBlocked } = req.body
+    if (!ids || ids.length === 0) return res.status(400).json({ success: false, message: 'Không có người dùng nào được chọn' })
+    await User.updateMany({ _id: { $in: ids } }, { isBlocked })
+    res.json({ success: true, message: `Đã ${isBlocked ? 'khóa' : 'mở khóa'} ${ids.length} tài khoản` })
+  } catch (error) { next(error) }
+}
+
 // ── Categories ──
 exports.getAllCategories = async (req, res, next) => {
   try {
@@ -221,6 +240,16 @@ exports.getAllOrders = async (req, res, next) => {
     const filter = {}
 
     if (req.query.status) filter.orderStatus = req.query.status
+    if (req.query.keyword) {
+      const regex = { $regex: req.query.keyword, $options: 'i' }
+      filter.$or = [
+        { 'shippingAddress.fullName': regex },
+        { 'shippingAddress.phone': regex },
+      ]
+      if (req.query.keyword.match(/^[0-9a-fA-F]{24}$/)) {
+        filter.$or.push({ _id: req.query.keyword })
+      }
+    }
 
     const total = await Order.countDocuments(filter)
     const orders = await Order.find(filter)
@@ -287,6 +316,15 @@ exports.updateOrderStatus = async (req, res, next) => {
     await order.save()
     await OrderLog.create({ order: order._id, status, changedBy: req.user._id })
 
+    const statusLabels = { processing: 'đang xử lý', shipping: 'đang giao', delivered: 'đã giao', cancelled: 'đã hủy' }
+    await createNotification({
+      userId: order.user,
+      type: 'order_status',
+      title: `Đơn hàng #${order._id.toString().slice(-6).toUpperCase()}`,
+      message: `Đơn hàng của bạn ${statusLabels[status] || status}`,
+      link: `/don-hang/${order._id}`,
+    })
+
     res.json({ success: true, message: 'Cập nhật trạng thái thành công', order })
   } catch (error) {
     next(error)
@@ -299,9 +337,19 @@ exports.getAllUsers = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1
     const limit = parseInt(req.query.limit, 10) || 20
     const skip = (page - 1) * limit
+    const filter = {}
 
-    const total = await User.countDocuments()
-    const users = await User.find().sort('-createdAt').skip(skip).limit(limit)
+    if (req.query.keyword) {
+      filter.$or = [
+        { name: { $regex: req.query.keyword, $options: 'i' } },
+        { email: { $regex: req.query.keyword, $options: 'i' } },
+      ]
+    }
+    if (req.query.role) filter.role = req.query.role
+    if (req.query.isBlocked !== undefined) filter.isBlocked = req.query.isBlocked === 'true'
+
+    const total = await User.countDocuments(filter)
+    const users = await User.find(filter).sort('-createdAt').skip(skip).limit(limit)
 
     res.json({ success: true, users, total, page, pages: Math.ceil(total / limit) })
   } catch (error) {
@@ -354,9 +402,13 @@ exports.getAllReviews = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1
     const limit = parseInt(req.query.limit, 10) || 20
     const skip = (page - 1) * limit
+    const filter = {}
 
-    const total = await Review.countDocuments()
-    const reviews = await Review.find()
+    if (req.query.rating) filter.rating = parseInt(req.query.rating, 10)
+    if (req.query.product) filter.product = req.query.product
+
+    const total = await Review.countDocuments(filter)
+    const reviews = await Review.find(filter)
       .populate('user', 'name email')
       .populate('product', 'name')
       .sort('-createdAt')
@@ -405,8 +457,13 @@ exports.getAllBanners = async (req, res, next) => {
 
 exports.createBanner = async (req, res, next) => {
   try {
-    const { title, subtitle, image, link, type, order } = req.body
-    const result = await cloudinary.uploader.upload(image, { folder: 'banners' })
+    const { title, subtitle, image, link, type, order, isActive } = req.body
+    if (!image) return res.status(400).json({ success: false, message: 'Vui lòng tải ảnh banner' })
+
+    const result = await cloudinary.uploader.upload(image, {
+      folder: 'banners',
+      resource_type: 'image',
+    })
 
     const banner = await Banner.create({
       title,
@@ -415,6 +472,7 @@ exports.createBanner = async (req, res, next) => {
       link,
       type,
       order: order || 0,
+      isActive: isActive !== undefined ? isActive : true,
     })
 
     res.status(201).json({ success: true, message: 'Tạo banner thành công', banner })
@@ -580,6 +638,46 @@ exports.deleteOutfit = async (req, res, next) => {
   } catch (error) {
     next(error)
   }
+}
+
+// ── Export ──
+exports.exportOrders = async (req, res, next) => {
+  try {
+    const orders = await Order.find().populate('user', 'name email').sort('-createdAt').lean()
+    const header = 'Mã đơn,Khách hàng,Email,Tổng tiền,Thanh toán,Trạng thái,Ngày tạo\n'
+    const rows = orders.map((o) =>
+      `${o._id},${o.user?.name || ''},${o.user?.email || ''},${o.totalPrice},${o.paymentMethod},${o.orderStatus},${new Date(o.createdAt).toLocaleDateString('vi-VN')}`
+    ).join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename=orders.csv')
+    res.send('\uFEFF' + header + rows)
+  } catch (error) { next(error) }
+}
+
+exports.exportUsers = async (req, res, next) => {
+  try {
+    const users = await User.find().sort('-createdAt').lean()
+    const header = 'Tên,Email,Quyền,Xác thực,Trạng thái,Ngày tạo\n'
+    const rows = users.map((u) =>
+      `${u.name || ''},${u.email},${u.role},${u.isVerified ? 'Đã xác thực' : 'Chưa'},${u.isBlocked ? 'Bị khóa' : 'Hoạt động'},${new Date(u.createdAt).toLocaleDateString('vi-VN')}`
+    ).join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename=users.csv')
+    res.send('\uFEFF' + header + rows)
+  } catch (error) { next(error) }
+}
+
+exports.exportProducts = async (req, res, next) => {
+  try {
+    const products = await Product.find({ isDeleted: false }).populate('category', 'name').sort('-createdAt').lean()
+    const header = 'Tên,Giá,Giá giảm,Danh mục,Tồn kho,Đã bán,Đánh giá\n'
+    const rows = products.map((p) =>
+      `"${p.name}",${p.price},${p.discountPrice || 0},${p.category?.name || ''},${p.stock},${p.sold || 0},${p.rating || 0}`
+    ).join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename=products.csv')
+    res.send('\uFEFF' + header + rows)
+  } catch (error) { next(error) }
 }
 
 // ── Settings ──

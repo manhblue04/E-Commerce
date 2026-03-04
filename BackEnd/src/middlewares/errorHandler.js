@@ -1,5 +1,9 @@
 const errorHandler = (err, req, res, next) => {
-  let statusCode = err.statusCode || 500
+  if (process.env.NODE_ENV === 'development') {
+    console.error('ERROR:', err.message, err.stack?.split('\n')[1]?.trim())
+  }
+
+  let statusCode = err.status || err.statusCode || 500
   let message = err.message || 'Lỗi máy chủ nội bộ'
 
   if (err.name === 'CastError') {

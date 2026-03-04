@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Table, Button, Space, Modal, Form, Input, InputNumber, Select, Switch, Upload, Tag, Popconfirm, message } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import * as adminApi from '../../services/adminService'
 
 export default function ProductMgmtPage() {
@@ -14,18 +14,23 @@ export default function ProductMgmtPage() {
   const [form] = Form.useForm()
   const [imageList, setImageList] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const [keyword, setKeyword] = useState('')
+  const [searchVal, setSearchVal] = useState('')
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
 
   const fetchProducts = async (p = 1) => {
     setLoading(true)
     try {
-      const [prodRes, catRes] = await Promise.all([adminApi.getProducts({ page: p, limit: 15 }), adminApi.getCategories()])
+      const params = { page: p, limit: 15 }
+      if (keyword) params.keyword = keyword
+      const [prodRes, catRes] = await Promise.all([adminApi.getProducts(params), adminApi.getCategories()])
       setProducts(prodRes.products)
       setTotal(prodRes.total)
       setCategories(catRes.categories)
     } catch { /* empty */ } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchProducts(page) }, [page])
+  useEffect(() => { fetchProducts(page) }, [page, keyword])
 
   const openCreate = () => { setEditing(null); form.resetFields(); setImageList([]); setModalOpen(true) }
   const openEdit = (record) => {
@@ -99,10 +104,39 @@ export default function ProductMgmtPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700 }}>Quản lý sản phẩm</h1>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm sản phẩm</Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input.Search
+            placeholder="Tìm sản phẩm..."
+            value={searchVal}
+            onChange={(e) => setSearchVal(e.target.value)}
+            onSearch={() => { setKeyword(searchVal); setPage(1) }}
+            style={{ width: 250 }}
+            enterButton={<SearchOutlined />}
+            allowClear
+            onClear={() => { setSearchVal(''); setKeyword(''); setPage(1) }}
+          />
+          <Button icon={<DownloadOutlined />} onClick={() => adminApi.exportCsv('products')}>Export</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm sản phẩm</Button>
+        </div>
       </div>
 
-      <Table columns={columns} dataSource={products} rowKey="_id" loading={loading} pagination={{ current: page, total, pageSize: 15, onChange: setPage }} size="small" scroll={{ x: 900 }} />
+      {selectedRowKeys.length > 0 && (
+        <div style={{ marginBottom: 12, padding: '8px 16px', background: '#fff7ed', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 13 }}>Đã chọn {selectedRowKeys.length} sản phẩm</span>
+          <Popconfirm title={`Xóa ${selectedRowKeys.length} sản phẩm?`} onConfirm={async () => {
+            await adminApi.bulkDeleteProducts(selectedRowKeys)
+            message.success(`Đã xóa ${selectedRowKeys.length} sản phẩm`)
+            setSelectedRowKeys([])
+            fetchProducts(page)
+          }}>
+            <Button size="small" danger>Xóa hàng loạt</Button>
+          </Popconfirm>
+          <Button size="small" onClick={() => setSelectedRowKeys([])}>Bỏ chọn</Button>
+        </div>
+      )}
+
+      <Table columns={columns} dataSource={products} rowKey="_id" loading={loading} pagination={{ current: page, total, pageSize: 15, onChange: setPage }} size="small" scroll={{ x: 900 }}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }} />
 
       <Modal title={editing ? 'Sửa sản phẩm' : 'Thêm sản phẩm'} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} confirmLoading={submitting} width={600} okText="Lưu" cancelText="Hủy">
         <Form form={form} layout="vertical">

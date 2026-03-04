@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import useCartStore from '../../store/cartStore'
 import useAuthStore from '../../store/authStore'
-import { createOrder, validateCoupon } from '../../services/orderService'
+import { createOrder, validateCoupon, createMoMoPayment, createVNPayPayment } from '../../services/orderService'
 import { formatPrice } from '../../utils/formatPrice'
 
 export default function CheckoutPage() {
@@ -66,6 +66,19 @@ export default function CheckoutPage() {
         couponCode: couponCode || undefined,
       })
       clearCart()
+
+      if (paymentMethod === 'MOMO') {
+        try {
+          const payRes = await createMoMoPayment(res.order._id)
+          if (payRes.payUrl) { window.location.href = payRes.payUrl; return }
+        } catch { toast.error('Lỗi tạo thanh toán MoMo, đơn hàng đã được tạo') }
+      } else if (paymentMethod === 'VNPAY') {
+        try {
+          const payRes = await createVNPayPayment(res.order._id)
+          if (payRes.payUrl) { window.location.href = payRes.payUrl; return }
+        } catch { toast.error('Lỗi tạo thanh toán VNPay, đơn hàng đã được tạo') }
+      }
+
       toast.success(res.message)
       navigate(`/don-hang/${res.order._id}`)
     } catch (err) {

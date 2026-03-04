@@ -8,9 +8,11 @@ router.use(protect, admin)
 router.get('/dashboard', ac.getDashboard)
 
 // Products
+router.get('/products/export', ac.exportProducts)
 router.get('/products', ac.getAllProducts)
 router.post('/products', ac.createProduct)
 router.put('/products/:id', ac.updateProduct)
+router.post('/products/bulk-delete', ac.bulkDeleteProducts)
 router.delete('/products/:id', ac.deleteProduct)
 
 // Categories
@@ -20,13 +22,16 @@ router.put('/categories/:id', ac.updateCategory)
 router.delete('/categories/:id', ac.deleteCategory)
 
 // Orders
+router.get('/orders/export', ac.exportOrders)
 router.get('/orders', ac.getAllOrders)
 router.get('/orders/:id', ac.getOrderDetail)
 router.put('/orders/:id/status', ac.updateOrderStatus)
 
 // Users
+router.get('/users/export', ac.exportUsers)
 router.get('/users', ac.getAllUsers)
 router.get('/users/:id', ac.getUserDetail)
+router.post('/users/bulk-block', ac.bulkBlockUsers)
 router.put('/users/:id/block', ac.toggleBlockUser)
 router.put('/users/:id/role', ac.updateUserRole)
 

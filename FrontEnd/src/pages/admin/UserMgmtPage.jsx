@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Tag, Select, Popconfirm, message } from 'antd'
-import { LockOutlined, UnlockOutlined } from '@ant-design/icons'
+import { Table, Button, Tag, Select, Input, Popconfirm, message } from 'antd'
+import { LockOutlined, UnlockOutlined, SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import * as adminApi from '../../services/adminService'
 
 export default function UserMgmtPage() {
@@ -8,20 +8,31 @@ export default function UserMgmtPage() {
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [keyword, setKeyword] = useState('')
+  const [searchVal, setSearchVal] = useState('')
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
 
-  const fetch = (p = 1) => { setLoading(true); adminApi.getUsers({ page: p, limit: 20 }).then((r) => { setUsers(r.users); setTotal(r.total) }).finally(() => setLoading(false)) }
-  useEffect(() => { fetch(page) }, [page])
+  const fetchUsers = (p = 1) => {
+    setLoading(true)
+    const params = { page: p, limit: 20 }
+    if (keyword) params.keyword = keyword
+    adminApi.getUsers(params).then((r) => { setUsers(r.users); setTotal(r.total) }).finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchUsers(page) }, [page, keyword])
+
+  const handleSearch = () => { setKeyword(searchVal); setPage(1) }
 
   const handleToggleBlock = async (id) => {
     const res = await adminApi.toggleBlockUser(id)
     message.success(res.message)
-    fetch(page)
+    fetchUsers(page)
   }
 
   const handleRoleChange = async (id, role) => {
     await adminApi.updateUserRole(id, { role })
     message.success('Cập nhật quyền thành công')
-    fetch(page)
+    fetchUsers(page)
   }
 
   const columns = [
@@ -44,8 +55,43 @@ export default function UserMgmtPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>Quản lý người dùng</h1>
-      <Table columns={columns} dataSource={users} rowKey="_id" loading={loading} pagination={{ current: page, total, pageSize: 20, onChange: setPage }} size="small" scroll={{ x: 800 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Quản lý người dùng</h1>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input.Search
+            placeholder="Tìm theo tên, email..."
+            value={searchVal}
+            onChange={(e) => setSearchVal(e.target.value)}
+            onSearch={handleSearch}
+            style={{ width: 300 }}
+            enterButton={<SearchOutlined />}
+            allowClear
+            onClear={() => { setSearchVal(''); setKeyword(''); setPage(1) }}
+          />
+          <Button icon={<DownloadOutlined />} onClick={() => adminApi.exportCsv('users')}>Export</Button>
+        </div>
+      </div>
+      {selectedRowKeys.length > 0 && (
+        <div style={{ marginBottom: 12, padding: '8px 16px', background: '#fff7ed', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 13 }}>Đã chọn {selectedRowKeys.length} người dùng</span>
+          <Button size="small" danger onClick={async () => {
+            await adminApi.bulkBlockUsers(selectedRowKeys, true)
+            message.success(`Đã khóa ${selectedRowKeys.length} tài khoản`)
+            setSelectedRowKeys([])
+            fetchUsers(page)
+          }}>Khóa hàng loạt</Button>
+          <Button size="small" onClick={async () => {
+            await adminApi.bulkBlockUsers(selectedRowKeys, false)
+            message.success(`Đã mở khóa ${selectedRowKeys.length} tài khoản`)
+            setSelectedRowKeys([])
+            fetchUsers(page)
+          }}>Mở khóa hàng loạt</Button>
+          <Button size="small" onClick={() => setSelectedRowKeys([])}>Bỏ chọn</Button>
+        </div>
+      )}
+
+      <Table columns={columns} dataSource={users} rowKey="_id" loading={loading} pagination={{ current: page, total, pageSize: 20, onChange: setPage }} size="small" scroll={{ x: 800 }}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }} />
     </div>
   )
 }
