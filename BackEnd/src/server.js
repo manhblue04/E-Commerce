@@ -1,4 +1,7 @@
 require('dotenv').config()
+const dns = require('dns')
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
+
 const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
@@ -11,21 +14,43 @@ const app = express()
 
 connectDB()
 
+// Security
 app.use(helmet())
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
-app.use(express.json({ limit: '50mb' }))
-app.use(express.urlencoded({ extended: true }))
+app.set('trust proxy', 1)
 
+// CORS — hỗ trợ nhiều origin qua CLIENT_URL (phân tách bằng dấu phẩy)
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
+    cb(new Error(`Origin ${origin} not allowed by CORS`))
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}))
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// Logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'))
 }
 
-const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
+// Rate limiting
+app.use('/api', rateLimit({
+  windowMs: 60 * 1000,
   max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau' },
-})
-app.use('/api', limiter)
+}))
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'))
@@ -42,13 +67,15 @@ app.use('/api/payment', require('./routes/payment.routes'))
 app.use('/api/outfits', require('./routes/outfit.routes'))
 app.use('/api/notifications', require('./routes/notification.routes'))
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'Server đang hoạt động' })
 })
 
+// Error handler
 app.use(errorHandler)
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
-  console.log(`Server đang chạy tại port ${PORT}`)
+  console.log(`Server chạy tại port ${PORT} [${process.env.NODE_ENV}]`)
+  console.log(`CORS origins: ${allowedOrigins.join(', ')}`)
 })
