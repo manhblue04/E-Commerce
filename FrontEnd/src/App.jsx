@@ -9,6 +9,7 @@ import AdminLayout from './components/layout/AdminLayout'
 import ProtectedRoute from './routes/ProtectedRoute'
 import AdminRoute from './routes/AdminRoute'
 import LoadingSpinner from './components/common/LoadingSpinner'
+import ScrollToTop from './components/common/ScrollToTop'
 
 const HomePage = lazy(() => import('./pages/user/HomePage'))
 const ProductsPage = lazy(() => import('./pages/user/ProductsPage'))
@@ -57,6 +58,7 @@ function App() {
   return (
     <Router>
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+      <ScrollToTop />
       <Suspense fallback={<LoadingSpinner size="lg" />}>
         <Routes>
           {/* User routes */}

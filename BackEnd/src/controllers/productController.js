@@ -12,6 +12,13 @@ exports.getProducts = async (req, res, next) => {
     if (req.query.brand) baseFilter.brand = { $regex: req.query.brand, $options: 'i' }
     if (req.query.rating) baseFilter.rating = { $gte: parseFloat(req.query.rating) }
 
+    const priceFilter = {}
+    const minPrice = req.query['price[gte]'] || req.query.price?.gte
+    const maxPrice = req.query['price[lte]'] || req.query.price?.lte
+    if (minPrice) priceFilter.$gte = Number(minPrice)
+    if (maxPrice) priceFilter.$lte = Number(maxPrice)
+    if (Object.keys(priceFilter).length > 0) baseFilter.price = priceFilter
+
     const apiFeatures = new ApiFeatures(
       Product.find(baseFilter).populate('category', 'name slug'),
       req.query

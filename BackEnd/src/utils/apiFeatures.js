@@ -14,12 +14,23 @@ class ApiFeatures {
 
   filter() {
     const queryCopy = { ...this.queryStr }
-    const removeFields = ['keyword', 'page', 'limit', 'sort', 'gender', 'size', 'color', 'brand', 'rating']
+    const removeFields = ['keyword', 'page', 'limit', 'sort', 'gender', 'size', 'color', 'brand', 'rating', 'price[gte]', 'price[lte]']
     removeFields.forEach((key) => delete queryCopy[key])
 
     let queryStr = JSON.stringify(queryCopy)
     queryStr = queryStr.replace(/\b(gt|gte|lt|lte)\b/g, (match) => `$${match}`)
-    this.query = this.query.find(JSON.parse(queryStr))
+
+    const parsed = JSON.parse(queryStr)
+    for (const key of Object.keys(parsed)) {
+      if (typeof parsed[key] === 'object' && parsed[key] !== null) {
+        for (const op of Object.keys(parsed[key])) {
+          const num = Number(parsed[key][op])
+          if (!isNaN(num)) parsed[key][op] = num
+        }
+      }
+    }
+
+    this.query = this.query.find(parsed)
     return this
   }
 
