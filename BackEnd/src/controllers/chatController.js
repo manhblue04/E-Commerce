@@ -127,7 +127,7 @@ exports.aiSuggest = async (req, res, next) => {
     }))
 
     const reply = await aiService.generateReply(history, userMessage)
-    res.json({ success: true, suggestion: reply.text })
+    res.json({ success: true, suggestion: reply.text, products: reply.products || [] })
   } catch (error) {
     res.status(500).json({ success: false, message: 'Không thể tạo gợi ý AI' })
   }

@@ -761,6 +761,11 @@ exports.updateSettings = async (req, res, next) => {
       delete req.body.logo
     }
 
+    // Preserve existing AI API key if client sends empty string
+    if (req.body.ai && !req.body.ai.apiKey?.trim()) {
+      req.body.ai.apiKey = settings.ai?.apiKey || ''
+    }
+
     Object.assign(settings, req.body)
     await settings.save()
     res.json({ success: true, message: 'Cập nhật cài đặt thành công', settings })

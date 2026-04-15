@@ -3,6 +3,8 @@ const axios = require('axios')
 const User = require('../models/User')
 const generateToken = require('../utils/generateToken')
 const sendEmail = require('../utils/sendEmail')
+const getClientUrl = require('../utils/getClientUrl')
+const { verifyEmailTemplate, resetPasswordTemplate } = require('../utils/emailTemplates')
 
 exports.register = async (req, res, next) => {
   try {
@@ -23,22 +25,44 @@ exports.register = async (req, res, next) => {
       verifyTokenExpire: Date.now() + 24 * 60 * 60 * 1000,
     })
 
-    const verifyUrl = `${process.env.CLIENT_URL}/xac-thuc-email/${verifyToken}`
+    const verifyUrl = `${getClientUrl()}/xac-thuc-email/${verifyToken}`
     await sendEmail({
       to: email,
       subject: 'Xác thực tài khoản - Fashion Store',
-      html: `
-        <h2>Chào mừng bạn đến với Fashion Store!</h2>
-        <p>Vui lòng nhấn vào liên kết bên dưới để xác thực tài khoản:</p>
-        <a href="${verifyUrl}" style="display:inline-block;padding:12px 24px;background:#d4a574;color:#fff;text-decoration:none;border-radius:4px;">Xác thực tài khoản</a>
-        <p>Liên kết có hiệu lực trong 24 giờ.</p>
-      `,
+      html: verifyEmailTemplate(name, verifyUrl),
     })
 
     res.status(201).json({
       success: true,
       message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
     })
+  } catch (error) {
+    next(error)
+  }
+}
+
+exports.resendVerifyEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body
+    if (!email) return res.status(400).json({ success: false, message: 'Vui lòng cung cấp email' })
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() })
+    if (!user) return res.status(404).json({ success: false, message: 'Email không tồn tại trong hệ thống' })
+    if (user.isVerified) return res.status(400).json({ success: false, message: 'Tài khoản này đã được xác thực' })
+
+    const verifyToken = crypto.randomBytes(32).toString('hex')
+    user.verifyToken = verifyToken
+    user.verifyTokenExpire = Date.now() + 24 * 60 * 60 * 1000
+    await user.save()
+
+    const verifyUrl = `${getClientUrl()}/xac-thuc-email/${verifyToken}`
+    await sendEmail({
+      to: email,
+      subject: 'Xác thực tài khoản - Fashion Store',
+      html: verifyEmailTemplate(user.name, verifyUrl),
+    })
+
+    res.json({ success: true, message: 'Email xác thực đã được gửi lại. Vui lòng kiểm tra hộp thư.' })
   } catch (error) {
     next(error)
   }
@@ -62,7 +86,18 @@ exports.verifyEmail = async (req, res, next) => {
     user.verifyTokenExpire = undefined
     await user.save()
 
-    res.json({ success: true, message: 'Xác thực email thành công! Bạn có thể đăng nhập.' })
+    const jwtToken = generateToken(user._id)
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      avatar: user.avatar,
+      addresses: user.addresses,
+    }
+
+    res.json({ success: true, message: 'Xác thực email thành công!', token: jwtToken, user: userResponse })
   } catch (error) {
     next(error)
   }
@@ -175,16 +210,11 @@ exports.forgotPassword = async (req, res, next) => {
     user.resetPasswordExpire = Date.now() + 30 * 60 * 1000
     await user.save()
 
-    const resetUrl = `${process.env.CLIENT_URL}/dat-lai-mat-khau/${resetToken}`
+    const resetUrl = `${getClientUrl()}/dat-lai-mat-khau/${resetToken}`
     await sendEmail({
       to: email,
       subject: 'Đặt lại mật khẩu - Fashion Store',
-      html: `
-        <h2>Đặt lại mật khẩu</h2>
-        <p>Bạn đã yêu cầu đặt lại mật khẩu. Nhấn vào liên kết bên dưới:</p>
-        <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#d4a574;color:#fff;text-decoration:none;border-radius:4px;">Đặt lại mật khẩu</a>
-        <p>Liên kết có hiệu lực trong 30 phút.</p>
-      `,
+      html: resetPasswordTemplate(user.name, resetUrl),
     })
 
     res.json({ success: true, message: 'Email đặt lại mật khẩu đã được gửi' })

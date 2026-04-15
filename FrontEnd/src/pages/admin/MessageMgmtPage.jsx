@@ -221,7 +221,7 @@ function ChatWindow({ conversation, messages, messagesLoading, typingUsers, onSe
                   <span className="text-[10px] text-indigo-500 font-medium">AI Trợ lý</span>
                 </div>
               )}
-              <div className={`max-w-[70%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+              <div className={`max-w-[70%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
                 isAdmin
                   ? 'bg-blue-600 text-white rounded-br-md'
                   : isAI
@@ -229,6 +229,27 @@ function ChatWindow({ conversation, messages, messagesLoading, typingUsers, onSe
                     : 'bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100'
               }`}>
                 {msg.text}
+                {isAI && msg.products?.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {msg.products.map((p) => (
+                      <div key={p._id} className="flex items-center gap-2 p-1.5 bg-white/80 rounded-lg border border-indigo-100">
+                        {p.image ? (
+                          <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 text-base">
+                            👕
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-800 truncate">{p.name}</p>
+                          <p className="text-[10px] text-gray-500">
+                            {(p.discountPrice > 0 ? p.discountPrice : p.price).toLocaleString('vi-VN')}₫
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1 mt-0.5 px-1">
                 <span className="text-[10px] text-gray-400">{dayjs(msg.createdAt).format('HH:mm')}</span>

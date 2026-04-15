@@ -42,15 +42,15 @@ function SaleCard({ sale }) {
   const [expanded, setExpanded] = useState(false)
   const countdown = useCountdown(sale.endDate)
 
-  const discountLabel = sale.discountType === 'percentage'
+  const discountLabel = sale.discountType === 'percent'
     ? `Giảm ${sale.discountValue}%${sale.maxDiscountAmount ? ` (tối đa ${formatPrice(sale.maxDiscountAmount)})` : ''}`
     : `Giảm ${formatPrice(sale.discountValue)}`
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      {sale.banner && (
-        <div className="h-44 overflow-hidden">
-          <img src={sale.banner} alt={sale.name} className="w-full h-full object-cover" />
+      {sale.banner?.url && (
+        <div className="h-64 sm:h-80 overflow-hidden">
+          <img src={sale.banner.url} alt={sale.name} className="w-full h-full object-cover" />
         </div>
       )}
 

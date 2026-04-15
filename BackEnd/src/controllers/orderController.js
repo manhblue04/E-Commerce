@@ -4,6 +4,8 @@ const Product = require('../models/Product')
 const Coupon = require('../models/Coupon')
 const Setting = require('../models/Setting')
 const sendEmail = require('../utils/sendEmail')
+const getClientUrl = require('../utils/getClientUrl')
+const { orderConfirmTemplate } = require('../utils/emailTemplates')
 
 exports.createOrder = async (req, res, next) => {
   try {
@@ -109,27 +111,28 @@ exports.createOrder = async (req, res, next) => {
 
     try {
       const itemsHtml = validatedItems.map((i) =>
-        `<tr><td style="padding:8px;border-bottom:1px solid #eee">${i.name}${i.size ? ` (${i.size})` : ''}${i.color ? ` - ${i.color}` : ''}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${i.price.toLocaleString('vi-VN')}₫</td></tr>`
+        `<tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:14px;">
+            ${i.name}${i.size ? ` <span style="color:#6b7280;">(${i.size})</span>` : ''}${i.color ? ` <span style="color:#6b7280;">- ${i.color}</span>` : ''}
+          </td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:center;font-size:14px;">${i.quantity}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;">${i.price.toLocaleString('vi-VN')}₫</td>
+        </tr>`
       ).join('')
 
       await sendEmail({
         to: req.user.email,
         subject: `Xác nhận đơn hàng #${order._id.toString().slice(-6).toUpperCase()} - Fashion Store`,
-        html: `
-          <h2>Cảm ơn bạn đã đặt hàng!</h2>
-          <p>Đơn hàng <strong>#${order._id.toString().slice(-6).toUpperCase()}</strong> đã được tạo thành công.</p>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0">
-            <thead><tr style="background:#f9fafb"><th style="padding:8px;text-align:left">Sản phẩm</th><th style="padding:8px;text-align:center">SL</th><th style="padding:8px;text-align:right">Giá</th></tr></thead>
-            <tbody>${itemsHtml}</tbody>
-          </table>
-          <p><strong>Phí vận chuyển:</strong> ${shippingPrice === 0 ? 'Miễn phí' : shippingPrice.toLocaleString('vi-VN') + '₫'}</p>
-          ${discountPrice > 0 ? `<p><strong>Giảm giá:</strong> -${discountPrice.toLocaleString('vi-VN')}₫</p>` : ''}
-          <p style="font-size:18px"><strong>Tổng cộng: ${totalPrice.toLocaleString('vi-VN')}₫</strong></p>
-          <p><strong>Giao đến:</strong> ${shippingAddress.fullName}, ${shippingAddress.addressLine}, ${shippingAddress.ward}, ${shippingAddress.district}, ${shippingAddress.city}</p>
-          <p><strong>Phương thức:</strong> ${paymentMethod}</p>
-          <hr style="margin:16px 0" />
-          <p>Bạn có thể theo dõi đơn hàng tại: <a href="${process.env.CLIENT_URL}/don-hang/${order._id}">Xem đơn hàng</a></p>
-        `,
+        html: orderConfirmTemplate({
+          orderId: order._id,
+          itemsHtml,
+          shippingPrice,
+          discountPrice,
+          totalPrice,
+          shippingAddress,
+          paymentMethod,
+          orderUrl: `${getClientUrl()}/don-hang/${order._id}`,
+        }),
       })
     } catch { /* email failure should not block order */ }
 

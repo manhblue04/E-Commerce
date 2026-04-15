@@ -6,6 +6,16 @@ const messageSchema = new mongoose.Schema(
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     senderType: { type: String, enum: ['user', 'admin', 'ai'], required: true },
     text: { type: String, required: true },
+    products: [
+      {
+        _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: String,
+        slug: String,
+        price: Number,
+        discountPrice: Number,
+        image: String,
+      },
+    ],
     status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
     readAt: { type: Date },
   },

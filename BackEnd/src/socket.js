@@ -163,6 +163,7 @@ function initSocket(httpServer, allowedOrigins) {
                 sender: null,
                 senderType: 'ai',
                 text: aiReply.text,
+                products: aiReply.products || [],
                 status: 'sent',
               })
               conv.lastMessage = {

@@ -2,6 +2,7 @@ const router = require('express').Router()
 const {
   register,
   verifyEmail,
+  resendVerifyEmail,
   login,
   googleLogin,
   getMe,
@@ -25,6 +26,7 @@ const {
 
 router.post('/register', registerValidator, validate, register)
 router.get('/verify-email/:token', verifyEmail)
+router.post('/resend-verify-email', resendVerifyEmail)
 router.post('/login', loginValidator, validate, login)
 router.post('/google-login', googleLogin)
 router.post('/forgot-password', forgotPasswordValidator, validate, forgotPassword)
