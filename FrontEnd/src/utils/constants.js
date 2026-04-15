@@ -16,4 +16,5 @@ export const PAYMENT_METHOD = {
   COD: 'Thanh toán khi nhận hàng',
   MOMO: 'Ví MoMo',
   VNPAY: 'VNPay',
+  STRIPE: 'Thẻ quốc tế (Stripe)',
 }

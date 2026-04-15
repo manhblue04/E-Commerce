@@ -26,6 +26,9 @@ const ForgotPasswordPage = lazy(() => import('./pages/user/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/user/ResetPasswordPage'))
 const VerifyEmailPage = lazy(() => import('./pages/user/VerifyEmailPage'))
 const NotFoundPage = lazy(() => import('./pages/user/NotFoundPage'))
+const PaymentResultPage = lazy(() => import('./pages/user/PaymentResultPage'))
+const SalePage = lazy(() => import('./pages/user/SalePage'))
+const PolicyPage = lazy(() => import('./pages/user/PolicyPage'))
 
 const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'))
 const ProductMgmtPage = lazy(() => import('./pages/admin/ProductMgmtPage'))
@@ -38,6 +41,7 @@ const CouponMgmtPage = lazy(() => import('./pages/admin/CouponMgmtPage'))
 const OutfitMgmtPage = lazy(() => import('./pages/admin/OutfitMgmtPage'))
 const SettingPage = lazy(() => import('./pages/admin/SettingPage'))
 const MessageMgmtPage = lazy(() => import('./pages/admin/MessageMgmtPage'))
+const SaleMgmtPage = lazy(() => import('./pages/admin/SaleMgmtPage'))
 
 function App() {
   const { token, fetchMe } = useAuthStore()
@@ -63,21 +67,26 @@ function App() {
       <Suspense fallback={<LoadingSpinner size="lg" />}>
         <Routes>
           {/* User routes */}
+          {/* Auth pages (no header/footer) */}
+          <Route path="/dang-nhap" element={<LoginPage />} />
+          <Route path="/dang-ky" element={<RegisterPage />} />
+
           <Route element={<UserLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/san-pham" element={<ProductsPage />} />
             <Route path="/san-pham/:slug" element={<ProductDetailPage />} />
             <Route path="/gio-hang" element={<CartPage />} />
             <Route path="/yeu-thich" element={<WishlistPage />} />
-            <Route path="/dang-nhap" element={<LoginPage />} />
-            <Route path="/dang-ky" element={<RegisterPage />} />
             <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
             <Route path="/dat-lai-mat-khau/:token" element={<ResetPasswordPage />} />
             <Route path="/xac-thuc-email/:token" element={<VerifyEmailPage />} />
             <Route path="/thanh-toan" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path="/thanh-toan/ket-qua" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
             <Route path="/don-hang" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
             <Route path="/don-hang/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
             <Route path="/tai-khoan" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/khuyen-mai" element={<SalePage />} />
+            <Route path="/chinh-sach/:type" element={<PolicyPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 
@@ -92,6 +101,7 @@ function App() {
             <Route path="danh-gia" element={<ReviewMgmtPage />} />
             <Route path="banner" element={<BannerMgmtPage />} />
             <Route path="outfit" element={<OutfitMgmtPage />} />
+            <Route path="khuyen-mai" element={<SaleMgmtPage />} />
             <Route path="ma-giam-gia" element={<CouponMgmtPage />} />
             <Route path="cai-dat" element={<SettingPage />} />
           </Route>

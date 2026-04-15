@@ -31,8 +31,9 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li><Link to="/tai-khoan" className="hover:text-amber-400 transition">Tài khoản</Link></li>
               <li><Link to="/don-hang" className="hover:text-amber-400 transition">Đơn hàng</Link></li>
-              <li><Link to="/yeu-thich" className="hover:text-amber-400 transition">Yêu thích</Link></li>
-              <li><Link to="/gio-hang" className="hover:text-amber-400 transition">Giỏ hàng</Link></li>
+              <li><Link to="/chinh-sach/chinh-sach-doi-tra" className="hover:text-amber-400 transition">Chính sách đổi trả</Link></li>
+              <li><Link to="/chinh-sach/chinh-sach-bao-mat" className="hover:text-amber-400 transition">Chính sách bảo mật</Link></li>
+              <li><Link to="/chinh-sach/dieu-khoan-su-dung" className="hover:text-amber-400 transition">Điều khoản sử dụng</Link></li>
             </ul>
           </div>
 

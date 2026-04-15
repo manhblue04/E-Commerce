@@ -88,6 +88,15 @@ export default function Header() {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
   }
 
+  const markOneRead = async (notif) => {
+    if (notif.isRead) return
+    try {
+      await api.put(`/notifications/${notif._id}/read`)
+      setNotifications((prev) => prev.map((n) => n._id === notif._id ? { ...n, isRead: true } : n))
+      setUnreadCount((c) => Math.max(0, c - 1))
+    } catch { /* silent */ }
+  }
+
   const handleSearch = (e) => {
     e.preventDefault()
     if (keyword.trim()) {
@@ -172,6 +181,7 @@ export default function Header() {
           <nav className="hidden lg:flex items-center gap-8">
             <Link to="/" className="text-sm font-medium text-gray-700 hover:text-amber-600 transition">Trang chủ</Link>
             <Link to="/san-pham" className="text-sm font-medium text-gray-700 hover:text-amber-600 transition">Sản phẩm</Link>
+            <Link to="/khuyen-mai" className="text-sm font-medium text-gray-700 hover:text-amber-600 transition">Khuyến mãi</Link>
           </nav>
 
           {/* Actions */}
@@ -203,12 +213,15 @@ export default function Header() {
                           <Link
                             key={n._id}
                             to={n.link || '#'}
-                            onClick={() => setNotifOpen(false)}
-                            className={`block px-4 py-3 hover:bg-gray-50 transition border-b border-gray-50 ${!n.isRead ? 'bg-amber-50/50' : ''}`}
+                            onClick={() => { markOneRead(n); setNotifOpen(false) }}
+                            className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition border-b border-gray-50 ${!n.isRead ? 'bg-amber-50/50' : ''}`}
                           >
-                            <p className="text-sm font-medium text-gray-800">{n.title}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
-                            <p className="text-xs text-gray-300 mt-1">{new Date(n.createdAt).toLocaleString('vi-VN')}</p>
+                            {!n.isRead && <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1.5" />}
+                            <div className={!n.isRead ? '' : 'ml-5'}>
+                              <p className="text-sm font-medium text-gray-800">{n.title}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
+                              <p className="text-xs text-gray-300 mt-1">{new Date(n.createdAt).toLocaleString('vi-VN')}</p>
+                            </div>
                           </Link>
                         ))
                       )}
@@ -285,6 +298,7 @@ export default function Header() {
             </form>
             <Link to="/" onClick={() => setMobileMenu(false)} className="block py-2 text-gray-700 font-medium">Trang chủ</Link>
             <Link to="/san-pham" onClick={() => setMobileMenu(false)} className="block py-2 text-gray-700 font-medium">Sản phẩm</Link>
+            <Link to="/khuyen-mai" onClick={() => setMobileMenu(false)} className="block py-2 text-gray-700 font-medium">Khuyến mãi</Link>
           </div>
         )}
       </div>

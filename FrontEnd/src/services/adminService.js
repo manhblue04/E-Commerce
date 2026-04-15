@@ -43,6 +43,12 @@ export const createOutfit = (data) => api.post(`${a}/outfits`, data)
 export const updateOutfit = (id, data) => api.put(`${a}/outfits/${id}`, data)
 export const deleteOutfit = (id) => api.delete(`${a}/outfits/${id}`)
 
+export const getSales = (params) => api.get('/sales', { params })
+export const getSaleById = (id) => api.get(`/sales/${id}`)
+export const createSale = (data) => api.post('/sales', data)
+export const updateSale = (id, data) => api.put(`/sales/${id}`, data)
+export const deleteSale = (id) => api.delete(`/sales/${id}`)
+
 export const getSettings = () => api.get(`${a}/settings`)
 export const updateSettings = (data) => api.put(`${a}/settings`, data)
 

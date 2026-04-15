@@ -12,8 +12,10 @@ export default function AccountPage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
-  const [addressForm, setAddressForm] = useState({ fullName: '', phone: '', addressLine: '', city: '', district: '', ward: '', isDefault: false })
+  const emptyAddress = { fullName: '', phone: '', addressLine: '', city: '', district: '', ward: '', isDefault: false }
+  const [addressForm, setAddressForm] = useState(emptyAddress)
   const [showAddressForm, setShowAddressForm] = useState(false)
+  const [editingAddressId, setEditingAddressId] = useState(null)
 
   const handleUpdateProfile = (e) => {
     e.preventDefault()
@@ -48,17 +50,32 @@ export default function AccountPage() {
     }
   }
 
-  const handleAddAddress = async (e) => {
+  const handleSaveAddress = async (e) => {
     e.preventDefault()
     try {
-      await api.post('/auth/address', addressForm)
-      toast.success('Thêm địa chỉ thành công')
+      if (editingAddressId) {
+        await api.put(`/auth/address/${editingAddressId}`, addressForm)
+        toast.success('Cập nhật địa chỉ thành công')
+      } else {
+        await api.post('/auth/address', addressForm)
+        toast.success('Thêm địa chỉ thành công')
+      }
       setShowAddressForm(false)
-      setAddressForm({ fullName: '', phone: '', addressLine: '', city: '', district: '', ward: '', isDefault: false })
+      setEditingAddressId(null)
+      setAddressForm(emptyAddress)
       useAuthStore.getState().fetchMe()
     } catch (err) {
       toast.error(err.message)
     }
+  }
+
+  const handleEditAddress = (addr) => {
+    setEditingAddressId(addr._id)
+    setAddressForm({
+      fullName: addr.fullName, phone: addr.phone, addressLine: addr.addressLine,
+      city: addr.city, district: addr.district, ward: addr.ward, isDefault: addr.isDefault,
+    })
+    setShowAddressForm(true)
   }
 
   const handleDeleteAddress = async (addrId) => {
@@ -178,13 +195,13 @@ export default function AccountPage() {
         <div className="bg-white border border-gray-100 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900">Địa chỉ</h2>
-            <button onClick={() => setShowAddressForm(!showAddressForm)} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+            <button onClick={() => { setShowAddressForm(!showAddressForm); setEditingAddressId(null); setAddressForm(emptyAddress) }} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
               + Thêm địa chỉ
             </button>
           </div>
 
           {showAddressForm && (
-            <form onSubmit={handleAddAddress} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">
+            <form onSubmit={handleSaveAddress} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">
               <input value={addressForm.fullName} onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })} placeholder="Họ tên" required className="px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-amber-500" />
               <input value={addressForm.phone} onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })} placeholder="SĐT" required className="px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-amber-500" />
               <input value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} placeholder="Tỉnh/Thành" required className="px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-amber-500" />
@@ -193,7 +210,10 @@ export default function AccountPage() {
               <input value={addressForm.addressLine} onChange={(e) => setAddressForm({ ...addressForm, addressLine: e.target.value })} placeholder="Địa chỉ chi tiết" required className="px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-amber-500" />
               <div className="sm:col-span-2 flex items-center justify-between">
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={addressForm.isDefault} onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })} className="accent-amber-500" /> Đặt làm mặc định</label>
-                <button type="submit" className="px-4 py-2 bg-gray-900 text-white text-sm rounded hover:bg-gray-800 transition">Thêm</button>
+                <div className="flex gap-2">
+                  {editingAddressId && <button type="button" onClick={() => { setShowAddressForm(false); setEditingAddressId(null); setAddressForm(emptyAddress) }} className="px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded hover:bg-gray-100 transition">Hủy</button>}
+                  <button type="submit" className="px-4 py-2 bg-gray-900 text-white text-sm rounded hover:bg-gray-800 transition">{editingAddressId ? 'Cập nhật' : 'Thêm'}</button>
+                </div>
               </div>
             </form>
           )}
@@ -206,7 +226,10 @@ export default function AccountPage() {
                     <p className="font-medium text-gray-800">{addr.fullName} - {addr.phone} {addr.isDefault && <span className="text-amber-600 text-xs">(Mặc định)</span>}</p>
                     <p className="text-gray-500">{addr.addressLine}, {addr.ward}, {addr.district}, {addr.city}</p>
                   </div>
-                  <button onClick={() => handleDeleteAddress(addr._id)} className="text-xs text-red-500 hover:text-red-600 shrink-0">Xóa</button>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => handleEditAddress(addr)} className="text-xs text-amber-600 hover:text-amber-700">Sửa</button>
+                    <button onClick={() => handleDeleteAddress(addr._id)} className="text-xs text-red-500 hover:text-red-600">Xóa</button>
+                  </div>
                 </div>
               ))}
             </div>

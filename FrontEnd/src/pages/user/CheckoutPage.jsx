@@ -3,8 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import useCartStore from '../../store/cartStore'
 import useAuthStore from '../../store/authStore'
-import { createOrder, validateCoupon, createMoMoPayment, createVNPayPayment } from '../../services/orderService'
+import { createOrder, validateCoupon, createMoMoPayment, createVNPayPayment, createStripeCheckout } from '../../services/orderService'
 import { formatPrice } from '../../utils/formatPrice'
+
+const PAYMENT_METHODS = [
+  { value: 'COD', label: 'Thanh toán khi nhận hàng (COD)', icon: '💵' },
+  { value: 'MOMO', label: 'Ví MoMo', icon: '🟣' },
+  { value: 'VNPAY', label: 'VNPay', icon: '🔵' },
+  { value: 'STRIPE', label: 'Thẻ quốc tế (Visa / Mastercard)', icon: '💳' },
+]
 
 export default function CheckoutPage() {
   const { items, clearCart } = useCartStore()
@@ -77,6 +84,11 @@ export default function CheckoutPage() {
           const payRes = await createVNPayPayment(res.order._id)
           if (payRes.payUrl) { window.location.href = payRes.payUrl; return }
         } catch { toast.error('Lỗi tạo thanh toán VNPay, đơn hàng đã được tạo') }
+      } else if (paymentMethod === 'STRIPE') {
+        try {
+          const payRes = await createStripeCheckout(res.order._id)
+          if (payRes.url) { window.location.href = payRes.url; return }
+        } catch { toast.error('Lỗi tạo thanh toán Stripe, đơn hàng đã được tạo') }
       }
 
       toast.success(res.message)
@@ -116,14 +128,17 @@ export default function CheckoutPage() {
           <div className="bg-white border border-gray-100 rounded-xl p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Phương thức thanh toán</h2>
             <div className="space-y-3">
-              {[
-                { value: 'COD', label: 'Thanh toán khi nhận hàng (COD)' },
-                { value: 'MOMO', label: 'Ví MoMo' },
-                { value: 'VNPAY', label: 'VNPay' },
-              ].map((m) => (
+              {PAYMENT_METHODS.map((m) => (
                 <label key={m.value} className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition ${paymentMethod === m.value ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300'}`}>
                   <input type="radio" name="payment" value={m.value} checked={paymentMethod === m.value} onChange={(e) => setPaymentMethod(e.target.value)} className="accent-amber-500" />
+                  <span className="text-base mr-1">{m.icon}</span>
                   <span className="text-sm font-medium text-gray-800">{m.label}</span>
+                  {m.value === 'STRIPE' && (
+                    <span className="ml-auto flex items-center gap-1.5">
+                      <img src="https://img.icons8.com/color/24/visa.png" alt="Visa" className="h-5" />
+                      <img src="https://img.icons8.com/color/24/mastercard-logo.png" alt="Mastercard" className="h-5" />
+                    </span>
+                  )}
                 </label>
               ))}
             </div>
@@ -169,8 +184,19 @@ export default function CheckoutPage() {
             disabled={loading}
             className="w-full mt-6 py-3.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition disabled:opacity-50"
           >
-            {loading ? 'Đang xử lý...' : 'Xác nhận đặt hàng'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Đang xử lý...
+              </span>
+            ) : paymentMethod === 'STRIPE' ? 'Thanh toán với Stripe' : 'Xác nhận đặt hàng'}
           </button>
+
+          {paymentMethod === 'STRIPE' && (
+            <p className="text-xs text-gray-400 text-center mt-2">
+              Bạn sẽ được chuyển đến trang thanh toán bảo mật của Stripe
+            </p>
+          )}
         </div>
       </form>
     </div>

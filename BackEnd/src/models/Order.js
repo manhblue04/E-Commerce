@@ -41,7 +41,7 @@ const orderSchema = new mongoose.Schema(
     shippingAddress: shippingAddressSchema,
     paymentMethod: {
       type: String,
-      enum: ['COD', 'MOMO', 'VNPAY'],
+      enum: ['COD', 'MOMO', 'VNPAY', 'STRIPE'],
       required: [true, 'Phương thức thanh toán là bắt buộc'],
     },
     paymentStatus: {
@@ -64,6 +64,7 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Coupon',
     },
+    stripeSessionId: { type: String },
     paidAt: Date,
     deliveredAt: Date,
   },

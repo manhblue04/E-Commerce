@@ -40,8 +40,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }))
+// Body parsing — skip JSON parsing for Stripe webhook (needs raw body)
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payment/stripe/webhook') return next()
+  express.json({ limit: '10mb' })(req, res, next)
+})
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Logging
@@ -73,6 +76,7 @@ app.use('/api/payment', require('./routes/payment.routes'))
 app.use('/api/outfits', require('./routes/outfit.routes'))
 app.use('/api/notifications', require('./routes/notification.routes'))
 app.use('/api/chat', require('./routes/chat.routes'))
+app.use('/api/sales', require('./routes/sale.routes'))
 
 app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'Server đang hoạt động' })

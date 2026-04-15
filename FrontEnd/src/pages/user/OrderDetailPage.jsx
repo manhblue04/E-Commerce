@@ -1,10 +1,103 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { HiCheck, HiX } from 'react-icons/hi'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import { getOrderDetail, cancelOrder } from '../../services/orderService'
 import { formatPrice } from '../../utils/formatPrice'
-import { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from '../../utils/constants'
+import { PAYMENT_METHOD, PAYMENT_STATUS } from '../../utils/constants'
+
+const STATUS_STEPS = [
+  { key: 'pending', label: 'Chờ xác nhận' },
+  { key: 'processing', label: 'Đang xử lý' },
+  { key: 'shipping', label: 'Đang giao' },
+  { key: 'delivered', label: 'Đã nhận' },
+]
+
+const STATUS_BADGE = {
+  pending: 'bg-orange-50 text-orange-600',
+  processing: 'bg-blue-50 text-blue-600',
+  shipping: 'bg-cyan-50 text-cyan-600',
+  delivered: 'bg-green-50 text-green-600',
+  cancelled: 'bg-red-50 text-red-600',
+}
+
+const STATUS_LABEL = {
+  pending: 'Chờ xác nhận',
+  processing: 'Đang xử lý',
+  shipping: 'Đang giao hàng',
+  delivered: 'Đã giao hàng',
+  cancelled: 'Đã hủy',
+}
+
+function OrderTimeline({ order, logs }) {
+  const isCancelled = order.orderStatus === 'cancelled'
+
+  if (isCancelled) {
+    const cancelLog = logs.find((l) => l.status === 'cancelled')
+    return (
+      <div className="bg-white border border-gray-100 rounded-xl p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Tiến trình đơn hàng</h2>
+        <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
+          <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+            <HiX className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-red-700">Đơn hàng đã bị hủy</p>
+            {cancelLog && (
+              <p className="text-xs text-red-500 mt-0.5">
+                {new Date(cancelLog.changedAt).toLocaleString('vi-VN')}
+                {cancelLog.note && ` — ${cancelLog.note}`}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const currentIdx = STATUS_STEPS.findIndex((s) => s.key === order.orderStatus)
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-6">
+      <h2 className="font-bold text-gray-900 mb-6">Tiến trình đơn hàng</h2>
+      <div className="flex items-start">
+        {STATUS_STEPS.map((step, idx) => {
+          const isDone = idx <= currentIdx
+          const isCurrent = idx === currentIdx
+          const log = logs.find((l) => l.status === step.key)
+
+          return (
+            <div key={step.key} className="flex-1 relative">
+              {/* Connector line */}
+              {idx < STATUS_STEPS.length - 1 && (
+                <div className={`absolute top-5 left-[calc(50%+20px)] right-0 h-0.5 ${idx < currentIdx ? 'bg-green-500' : 'bg-gray-200'}`} />
+              )}
+
+              <div className="flex flex-col items-center text-center relative z-10">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                  isDone
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-100 text-gray-400'
+                } ${isCurrent ? 'ring-4 ring-green-100' : ''}`}>
+                  {isDone ? <HiCheck className="w-5 h-5" /> : idx + 1}
+                </div>
+                <p className={`text-xs font-medium mt-2 ${isDone ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {step.label}
+                </p>
+                {log && (
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {new Date(log.changedAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export default function OrderDetailPage() {
   const { id } = useParams()
@@ -39,7 +132,7 @@ export default function OrderDetailPage() {
   if (loading) return <LoadingSpinner />
   if (!order) return <div className="text-center py-20 text-gray-500">Không tìm thấy đơn hàng</div>
 
-  const statusInfo = ORDER_STATUS[order.orderStatus]
+  const badgeClass = STATUS_BADGE[order.orderStatus] || 'bg-gray-50 text-gray-600'
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -48,12 +141,15 @@ export default function OrderDetailPage() {
           <Link to="/don-hang" className="text-sm text-amber-600 hover:text-amber-700 mb-2 inline-block">← Quay lại</Link>
           <h1 className="text-2xl font-bold text-gray-900">Đơn hàng #{order._id.slice(-8).toUpperCase()}</h1>
         </div>
-        <span className={`px-4 py-1.5 rounded-full text-sm font-semibold bg-${statusInfo?.color}-50 text-${statusInfo?.color}-600`}>
-          {statusInfo?.label}
+        <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${badgeClass}`}>
+          {STATUS_LABEL[order.orderStatus] || order.orderStatus}
         </span>
       </div>
 
       <div className="space-y-6">
+        {/* Timeline */}
+        <OrderTimeline order={order} logs={logs} />
+
         {/* Items */}
         <div className="bg-white border border-gray-100 rounded-xl p-6">
           <h2 className="font-bold text-gray-900 mb-4">Sản phẩm</h2>
@@ -88,8 +184,10 @@ export default function OrderDetailPage() {
             <h2 className="font-bold text-gray-900 mb-3">Thanh toán</h2>
             <div className="text-sm text-gray-600 space-y-1">
               <p>Phương thức: <span className="font-medium text-gray-800">{PAYMENT_METHOD[order.paymentMethod]}</span></p>
-              <p>Trạng thái: <span className="font-medium">{PAYMENT_STATUS[order.paymentStatus]?.label}</span></p>
+              <p>Trạng thái: <span className={`font-medium ${order.paymentStatus === 'paid' ? 'text-green-600' : order.paymentStatus === 'failed' ? 'text-red-600' : 'text-orange-600'}`}>{PAYMENT_STATUS[order.paymentStatus]?.label}</span></p>
               <p>Ngày đặt: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
+              {order.paidAt && <p>Thanh toán lúc: {new Date(order.paidAt).toLocaleString('vi-VN')}</p>}
+              {order.deliveredAt && <p>Giao hàng lúc: {new Date(order.deliveredAt).toLocaleString('vi-VN')}</p>}
             </div>
           </div>
         </div>
