@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Tag, Select, Input, Popconfirm, message } from 'antd'
-import { LockOutlined, UnlockOutlined, SearchOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Table, Button, Tag, Select, Input, Popconfirm, message, Space } from 'antd'
+import { LockOutlined, UnlockOutlined, SearchOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import * as adminApi from '../../services/adminService'
+import useAuthStore from '../../store/authStore'
 
 export default function UserMgmtPage() {
+  const currentUser = useAuthStore((s) => s.user)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -35,6 +37,17 @@ export default function UserMgmtPage() {
     fetchUsers(page)
   }
 
+  const handleDeleteUser = async (id) => {
+    try {
+      const res = await adminApi.deleteUser(id)
+      message.success(res.message)
+      setSelectedRowKeys((keys) => keys.filter((k) => k !== id))
+      fetchUsers(page)
+    } catch (e) {
+      message.error(e.message)
+    }
+  }
+
   const columns = [
     { title: 'Tên', dataIndex: 'name', render: (v) => v || '-' },
     { title: 'Email', dataIndex: 'email' },
@@ -46,11 +59,32 @@ export default function UserMgmtPage() {
     { title: 'Xác thực', dataIndex: 'isVerified', render: (v) => <Tag color={v ? 'green' : 'default'}>{v ? 'Đã xác thực' : 'Chưa'}</Tag> },
     { title: 'Trạng thái', dataIndex: 'isBlocked', render: (v) => <Tag color={v ? 'red' : 'green'}>{v ? 'Bị khóa' : 'Hoạt động'}</Tag> },
     { title: 'Ngày tạo', dataIndex: 'createdAt', render: (d) => new Date(d).toLocaleDateString('vi-VN') },
-    { title: '', width: 80, render: (_, r) => (
-      <Popconfirm title={r.isBlocked ? 'Mở khóa tài khoản?' : 'Khóa tài khoản?'} onConfirm={() => handleToggleBlock(r._id)}>
-        <Button icon={r.isBlocked ? <UnlockOutlined /> : <LockOutlined />} size="small" danger={!r.isBlocked} />
-      </Popconfirm>
-    )},
+    {
+      title: '',
+      width: 128,
+      render: (_, r) => {
+        const isSelf = String(r._id) === String(currentUser?._id)
+        const canDelete = r.role !== 'admin' && !isSelf
+        return (
+          <Space size="small">
+            <Popconfirm title={r.isBlocked ? 'Mở khóa tài khoản?' : 'Khóa tài khoản?'} onConfirm={() => handleToggleBlock(r._id)}>
+              <Button icon={r.isBlocked ? <UnlockOutlined /> : <LockOutlined />} size="small" danger={!r.isBlocked} />
+            </Popconfirm>
+            {canDelete && (
+              <Popconfirm
+                title="Xóa tài khoản?"
+                description="Thao tác không hoàn tác. Đơn hàng lịch sử vẫn được giữ; đánh giá và tin nhắn của người dùng sẽ bị xóa."
+                okText="Xóa"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => handleDeleteUser(r._id)}
+              >
+                <Button icon={<DeleteOutlined />} size="small" danger />
+              </Popconfirm>
+            )}
+          </Space>
+        )
+      },
+    },
   ]
 
   return (

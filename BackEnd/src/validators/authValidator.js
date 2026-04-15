@@ -6,7 +6,13 @@ const registerValidator = [
     .notEmpty()
     .withMessage('Họ tên là bắt buộc')
     .isLength({ min: 2, max: 50 })
-    .withMessage('Họ tên từ 2 đến 50 ký tự'),
+    .withMessage('Họ tên từ 2 đến 50 ký tự')
+    .custom((value) => {
+      if (/^[\p{Nd}\s]+$/u.test(value)) {
+        throw new Error('Họ tên không được chỉ gồm chữ số')
+      }
+      return true
+    }),
   body('email')
     .trim()
     .isEmail()

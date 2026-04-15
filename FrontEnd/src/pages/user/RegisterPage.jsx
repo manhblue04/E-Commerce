@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { HiOutlineEye, HiOutlineEyeOff, HiCheck, HiX } from 'react-icons/hi'
 import useAuthStore from '../../store/authStore'
 
+/** Họ tên hợp lệ: không được chỉ gồm chữ số và khoảng trắng */
+const isNameNotOnlyDigits = (name) => !/^[\p{Nd}\s]+$/u.test(name.trim())
+
 const PW_RULES = [
   { key: 'len', test: (v) => v.length >= 8, label: 'Tối thiểu 8 ký tự' },
   { key: 'upper', test: (v) => /[A-Z]/.test(v), label: 'Có chữ hoa (A-Z)' },
@@ -51,7 +54,11 @@ export default function RegisterPage() {
 
   const validate = useMemo(() => {
     const e = {}
-    if (touched.name && form.name.trim().length < 2) e.name = 'Họ tên tối thiểu 2 ký tự'
+    if (touched.name) {
+      const n = form.name.trim()
+      if (n.length < 2) e.name = 'Họ tên tối thiểu 2 ký tự'
+      else if (!isNameNotOnlyDigits(form.name)) e.name = 'Họ tên không được chỉ gồm chữ số'
+    }
     if (touched.email && !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Email không hợp lệ'
     if (touched.password) {
       const pw = form.password
@@ -64,7 +71,8 @@ export default function RegisterPage() {
     return e
   }, [form, touched])
 
-  const isValid = form.name.trim().length >= 2 && /^\S+@\S+\.\S+$/.test(form.email) && PW_RULES.every((r) => r.test(form.password)) && form.confirmPassword === form.password
+  const nameTrim = form.name.trim()
+  const isValid = nameTrim.length >= 2 && isNameNotOnlyDigits(form.name) && /^\S+@\S+\.\S+$/.test(form.email) && PW_RULES.every((r) => r.test(form.password)) && form.confirmPassword === form.password
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))

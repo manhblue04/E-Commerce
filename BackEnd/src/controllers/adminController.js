@@ -7,6 +7,10 @@ const Review = require('../models/Review')
 const Banner = require('../models/Banner')
 const Setting = require('../models/Setting')
 const Coupon = require('../models/Coupon')
+const Conversation = require('../models/Conversation')
+const Message = require('../models/Message')
+const Wishlist = require('../models/Wishlist')
+const Notification = require('../models/Notification')
 const cloudinary = require('../config/cloudinary')
 const { createNotification } = require('./notificationController')
 
@@ -391,6 +395,59 @@ exports.updateUserRole = async (req, res, next) => {
     const user = await User.findByIdAndUpdate(req.params.id, { role: req.body.role }, { new: true })
     if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' })
     res.json({ success: true, message: 'Cập nhật quyền thành công', user })
+  } catch (error) {
+    next(error)
+  }
+}
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const targetId = req.params.id
+    if (String(req.user._id) === String(targetId)) {
+      return res.status(400).json({ success: false, message: 'Không thể xóa tài khoản của chính bạn' })
+    }
+
+    const user = await User.findById(targetId)
+    if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' })
+    if (user.role === 'admin') {
+      return res.status(400).json({ success: false, message: 'Không thể xóa tài khoản quản trị viên' })
+    }
+
+    const reviewProductIds = await Review.distinct('product', { user: targetId })
+    await Review.deleteMany({ user: targetId })
+    for (const pid of reviewProductIds) {
+      const stats = await Review.aggregate([
+        { $match: { product: pid } },
+        { $group: { _id: '$product', avgRating: { $avg: '$rating' }, numReviews: { $sum: 1 } } },
+      ])
+      if (stats.length > 0) {
+        await Product.findByIdAndUpdate(pid, { rating: Math.round(stats[0].avgRating * 10) / 10, numReviews: stats[0].numReviews })
+      } else {
+        await Product.findByIdAndUpdate(pid, { rating: 0, numReviews: 0 })
+      }
+    }
+
+    const convs = await Conversation.find({ user: targetId }).select('_id')
+    const convIds = convs.map((c) => c._id)
+    if (convIds.length) {
+      await Message.deleteMany({ conversation: { $in: convIds } })
+      await Conversation.deleteMany({ _id: { $in: convIds } })
+    }
+
+    await Wishlist.deleteMany({ user: targetId })
+    await Notification.deleteMany({ user: targetId })
+
+    if (user.avatar?.public_id) {
+      try {
+        await cloudinary.uploader.destroy(user.avatar.public_id)
+      } catch (_) {
+        /* ignore cloudinary errors */
+      }
+    }
+
+    await user.deleteOne()
+
+    res.json({ success: true, message: 'Đã xóa tài khoản người dùng' })
   } catch (error) {
     next(error)
   }

@@ -34,6 +34,7 @@ router.get('/users/:id', ac.getUserDetail)
 router.post('/users/bulk-block', ac.bulkBlockUsers)
 router.put('/users/:id/block', ac.toggleBlockUser)
 router.put('/users/:id/role', ac.updateUserRole)
+router.delete('/users/:id', ac.deleteUser)
 
 // Reviews
 router.get('/reviews', ac.getAllReviews)

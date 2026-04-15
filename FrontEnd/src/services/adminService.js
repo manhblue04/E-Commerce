@@ -24,6 +24,7 @@ export const getUserDetail = (id) => api.get(`${a}/users/${id}`)
 export const toggleBlockUser = (id) => api.put(`${a}/users/${id}/block`)
 export const bulkBlockUsers = (ids, isBlocked) => api.post(`${a}/users/bulk-block`, { ids, isBlocked })
 export const updateUserRole = (id, data) => api.put(`${a}/users/${id}/role`, data)
+export const deleteUser = (id) => api.delete(`${a}/users/${id}`)
 
 export const getReviews = (params) => api.get(`${a}/reviews`, { params })
 export const deleteReview = (id) => api.delete(`${a}/reviews/${id}`)
