@@ -8,12 +8,13 @@ export default defineConfig({
     port: 80,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
-        // target: 'http://47.130.2.174:5000',
+        // target: 'http://localhost:5000',
+        target: 'http://blue304.shop:5000',
+
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:5000',
+        target: 'http://blue304.shop:5000',
         changeOrigin: true,
         ws: true,
       },
